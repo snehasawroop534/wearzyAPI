@@ -5,6 +5,7 @@ const multer = require("multer");
 const bcrypt = require("bcrypt");
 const path = require("path");
 const { error } = require("console");
+const crypto = require("crypto");
 const app = express();
 
 const Razorpay = require("razorpay");
@@ -793,7 +794,7 @@ app.post("/api/payment/create", async (request, response) => {
 
 // Payment Callback (POST)
 
-const crypto = require("crypto");
+// const crypto = require("crypto");
 
 app.post("/api/payment/verify", async (request, response) => {
     const {
@@ -893,7 +894,9 @@ app.post("/api/user/register", async (request, response) => {
 app.post("/api/user/login", async (request, response) => {
     const email = request.body.email;
     const password = request.body.password;
-    const secretKey = "ghdfjjgi9ew8865w";
+
+    const ACCESS_SECRET = "ACCESS_SECRET_KEY";
+    const REFRESH_SECRET = "REFRESH_SECRET_KEY";
 
     try {
         const [result] = await db.query(
@@ -903,40 +906,144 @@ app.post("/api/user/login", async (request, response) => {
 
         if (result.length === 0) {
             return response.status(401).json({
-                message: "Login failed: Invalid email or password."
+                message: "Invalid email or password"
             });
         }
 
         const user = result[0];
-        const dbPassword = user.password;
-
-        const isPasswordSame = await bcrypt.compare(password, dbPassword);
+        const isPasswordSame = await bcrypt.compare(password, user.password);
 
         if (!isPasswordSame) {
             return response.status(401).json({
-                message: "Login failed: Invalid email or password."
+                message: "Invalid email or password"
             });
         }
 
-        const token = jwt.sign(
-            { userId: user.userId, name: user.name, email: user.email },
-            secretKey,
-            { expiresIn: "1h" }
+        // Generate Access Token
+        const accessToken = jwt.sign(
+            { userId: user.userId, email: user.email },
+            ACCESS_SECRET,
+            { expiresIn: "15m" }
+        );
+
+        // Generate Refresh Token
+        const refreshToken = jwt.sign(
+            { userId: user.userId, email: user.email },
+            REFRESH_SECRET,
+            { expiresIn: "7d" }
+        );
+
+        // Save refresh token in database
+        await db.query(
+            "INSERT INTO refresh_tokens (userId, token) VALUES (?, ?)",
+            [user.userId, refreshToken]
         );
 
         response.status(200).json({
-            message: "Login successfully",
-            token: token,
-            
+            message: "Login successful",
+            accessToken: accessToken,
+            refreshToken: refreshToken
         });
 
     } catch (error) {
-        console.error("Login attempt error:", error);
-        return response.status(500).json({
-            message: "An internal server error occurred during login."
+        console.error("Login Error:", error);
+        response.status(500).json({ message: "Internal server error" });
+    }
+});
+
+
+//refresh token
+
+app.post("/api/auth/refresh-token", async (request, response) => {
+    const refreshToken = request.body.refreshToken;
+
+    const ACCESS_SECRET = "ACCESS_SECRET_KEY";
+    const REFRESH_SECRET = "REFRESH_SECRET_KEY";
+
+    try {
+        // Check token provided or not
+        if (!refreshToken) {
+            return response.status(400).json({
+                message: "Refresh token is required"
+            });
+        }
+
+        // Check token exists in DB
+        const [tokenRecord] = await db.query(
+            "SELECT * FROM refresh_tokens WHERE token=?",
+            [refreshToken]
+        );
+
+        if (tokenRecord.length === 0) {
+            return response.status(403).json({
+                message: "Invalid refresh token"
+            });
+        }
+
+        // Verify refresh token
+        jwt.verify(refreshToken, REFRESH_SECRET, (err, userData) => {
+            if (err) {
+                return response.status(403).json({
+                    message: "Invalid or expired refresh token"
+                });
+            }
+
+            // Create new access token
+            const newAccessToken = jwt.sign(
+                {
+                    userId: userData.userId,
+                    email: userData.email
+                },
+                ACCESS_SECRET,
+                { expiresIn: "15m" }
+            );
+
+            response.status(200).json({
+                message: "New access token generated",
+                accessToken: newAccessToken
+            });
+        });
+
+    } catch (error) {
+        console.error("Refresh Token Error:", error);
+        response.status(500).json({
+            message: "Internal server error"
         });
     }
 });
+
+
+
+//logout api
+
+app.post("/api/auth/logout", async (request, response) => {
+    const refreshToken = request.body.refreshToken;
+
+    try {
+        if (!refreshToken) {
+            return response.status(400).json({
+                message: "Refresh token is required"
+            });
+        }
+
+        await db.query(
+            "DELETE FROM refresh_tokens WHERE token=?",
+            [refreshToken]
+        );
+
+        response.status(200).json({
+            message: "Logged out successfully"
+        });
+
+    } catch (error) {
+        console.error("Logout Error:", error);
+        response.status(500).json({
+            message: "Internal server error"
+        });
+    }
+});
+
+
 
 
 // get all user 
@@ -1005,6 +1112,107 @@ app.put("/api/user/profile/update/:userId", async (request, response) => {
         });
     }
 });
+
+
+// SEND OTP
+
+// import crypto from "crypto";
+
+app.post("/api/auth/send-otp", async (request, response) => {
+    const email = request.body.email;
+
+    try {
+        // Validation
+        if (!email) {
+            return response.status(400).json({
+                message: "Email is required",
+            });
+        }
+
+        // Generate random 6-digit OTP
+        const otp = crypto.randomInt(100000, 999999).toString();
+
+        // Save OTP in DB
+        await db.query(
+            "INSERT INTO password_reset_otps (email, otp) VALUES (?, ?)",
+            [email, otp]
+        );
+
+        // TODO: Send OTP email (optional, if needed)
+        console.log("Generated OTP:", otp);
+
+        // Success Response
+        response.status(200).json({
+            message: "OTP sent successfully",
+            email: email,
+            otp: otp, // show in response for testing — remove in production
+        });
+
+    } catch (error) {
+        console.error("Send OTP Error:", error);
+        response.status(500).json({
+            message: "Internal server error",
+        });
+    }
+});
+
+
+
+// reset password api
+
+app.post("/api/auth/reset-password", async (request, response) => {
+    const { email, otp, newPassword } = request.body;
+
+    try {
+
+        // Validation
+        if (!email || !otp || !newPassword) {
+            return response.status(400).json({
+                message: "email, otp & newPassword are required",
+            });
+        }
+
+        // Check OTP
+        const [otpRecord] = await db.query(
+            "SELECT * FROM password_reset_otps WHERE email=? AND otp=? ORDER BY createdAt DESC LIMIT 1",
+            [email, otp]
+        );
+
+        if (otpRecord.length === 0) {
+            return response.status(400).json({
+                message: "Invalid or expired OTP",
+            });
+        }
+
+        // Hash new password
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        // Update user password
+        await db.query(
+            "UPDATE users SET password=? WHERE email=?",
+            [hashedPassword, email]
+        );
+
+        // Delete OTP after use
+        await db.query(
+            "DELETE FROM password_reset_otps WHERE email=?",
+            [email]
+        );
+
+        // Success Response
+        response.status(200).json({
+            message: "Password reset successfully",
+            email: email,
+        });
+
+    } catch (error) {
+        console.error("Reset Password Error:", error);
+        response.status(500).json({
+            message: "Internal server error",
+        });
+    }
+});
+
 
 
 
