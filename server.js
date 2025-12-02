@@ -8,9 +8,6 @@ const { error } = require("console");
 const crypto = require("crypto");
 const app = express();
 
-
-app.use("/productImages", express.static("productImages"));
-
 const Razorpay = require("razorpay");
 
 const razorpay = new Razorpay({
@@ -32,7 +29,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-
+app.use("/productImages", express.static("productImages"));
 
 // Post product for admin use
 
