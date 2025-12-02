@@ -65,7 +65,7 @@ app.post("/api/products/add", upload.single("productimg"), async (req, res) => {
 
     } catch (error) {
         console.log(error);
-        res.status(500).json({ message: "Server internal error" });
+        res.status(500).json({ message: "Server internal error"+ error });
     }
 });
 
