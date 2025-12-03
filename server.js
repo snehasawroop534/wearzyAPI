@@ -1059,18 +1059,25 @@ app.get("/api/user", async (request, response) => {
 
 // get single user profile
 
-app.get("/api/user/profile",(request, response)=>{
-    const token = request.headers.authorization;
-    const secretKey = "ghdfjjgi9ew8865w";
+app.get("api/user/profile", (request, response) => {
 
-    jwt.verify(token, secretKey,(error, result)=>{
-        if(error){
-            response.status(400).json({message: "unathorized"})
-        }else{
-            response.status(200).json({result});
+    const token = request.headers.authorization;
+    const ACCESS_SECRET = "ACCESS_SECRET_KEY"; // SAME SECRET USED IN LOGIN
+
+    if(!token){
+        return response.status(400).json({message: "Token missing"});
+    }
+
+    jwt.verify(token, ACCESS_SECRET, (error, result) => {
+        if (error) {
+            return response.status(401).json({message: "Unauthorized"});
+        } else {
+            return response.status(200).json({profile: result});
         }
-    })
-})
+    });
+
+});
+
 
 // user update pofile 
 
