@@ -1059,24 +1059,30 @@ app.get("/api/user", async (request, response) => {
 
 // get single user profile
 
-app.get("/api/user/profile", (request, response) => {
+app.get("/api/user/profile", async (req, res) => {
+    const authHeader = req.headers.authorization;
+    const ACCESS_SECRET = "ACCESS_SECRET_KEY";
 
-    const token = request.headers.authorization;
-    const ACCESS_SECRET = "ACCESS_SECRET_KEY"; // SAME SECRET USED IN LOGIN
-
-    if(!token){
-        return response.status(400).json({message: "Token missing"});
+    if (!authHeader) {
+        return res.status(400).json({ message: "Token missing" });
     }
 
-    jwt.verify(token, ACCESS_SECRET, (error, result) => {
-        if (error) {
-            return response.status(401).json({message: "Unauthorized"});
-        } else {
-            return response.status(200).json({profile: result});
-        }
-    });
+    const token = authHeader.split(" ")[1];
 
+    jwt.verify(token, ACCESS_SECRET, async (error, decoded) => {
+        if (error) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+
+        const [result] = await db.query(
+            "SELECT userId, name, email FROM users WHERE userId = ?",
+            [decoded.userId]
+        );
+
+        res.status(200).json({ profile: result[0] });
+    });
 });
+
 
 
 // user update pofile 
