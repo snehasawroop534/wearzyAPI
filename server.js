@@ -1064,22 +1064,28 @@ app.get("/api/user/profile", (request, response) => {
     const token = request.headers.authorization;
     const ACCESS_SECRET = "ACCESS_SECRET_KEY"; // SAME SECRET USED IN LOGIN
 
-    if(!token){
-        return response.status(400).json({message: "Token missing"});
+    if (!token) {
+        return response.status(400).json({ message: "Token missing" });
     }
 
     jwt.verify(token, ACCESS_SECRET, (error, result) => {
         if (error) {
-            return response.status(401).json({message: "Unauthorized"});
+            return response.status(401).json({ message: "Unauthorized" });
         } else {
+
+            // return the token result as profile (it already includes name)
             return response.status(200).json({
-                profile: result,
-                name: result.name   // 👈 JUST THIS LINE ADDED
+                profile: {
+                    userId: result.userId,
+                    email: result.email,
+                    name: result.name   // 👈 Name added here
+                }
             });
         }
     });
 
 });
+
 
 
 
