@@ -1059,7 +1059,7 @@ app.get("/api/user", async (request, response) => {
 
 // get single user profile
 
-app.get("api/user/profile", (request, response) => {
+app.get("/api/user/profile", (request, response) => {
 
     const token = request.headers.authorization;
     const ACCESS_SECRET = "ACCESS_SECRET_KEY"; // SAME SECRET USED IN LOGIN
