@@ -254,6 +254,46 @@ app.get("/api/cart/:userId", async (request, response) => {
     }
 });
 
+
+
+// GET CART + PRODUCT DETAILS
+app.get("/api/cart/new/:userId", async (request, response) => {
+    const userId = request.params.userId;
+
+    try {
+        const [result] = await db.query(
+            `SELECT 
+                cart.cartId,
+                cart.userId,
+                cart.productId,
+                cart.size,
+                cart.quantity,
+                cart.price,
+
+                products.title,
+                products.brand,
+                products.image,
+                products.mrp,
+                products.discountedPrice,
+                products.description
+
+            FROM cart
+            JOIN products 
+            ON cart.productId = products.productId
+            WHERE cart.userId = ?`,
+            [userId]
+        );
+
+        response.status(200).json(result);
+
+    } catch (error) {
+        console.error("Error fetching cart:", error);
+        response.status(500).json({ message: "Internal server error" });
+    }
+});
+
+
+
 // update quantity
 
 app.put("/api/cart/update/:id", async (request, response) => {
