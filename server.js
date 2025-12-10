@@ -270,12 +270,12 @@ app.get("/api/cart/new/:userId", async (request, response) => {
                 cart.quantity,
                 cart.price,
 
-                products.title,
-                products.brand,
-                products.image,
-                products.mrp,
-                products.discountedPrice,
-                products.description
+                products.title AS product_title,
+                products.brand AS product_brand,
+                products.image AS product_image,
+                products.mrp AS product_mrp,
+                products.discountedPrice AS product_discountedPrice,
+                products.description AS product_description
 
             FROM cart
             JOIN products 
@@ -284,7 +284,26 @@ app.get("/api/cart/new/:userId", async (request, response) => {
             [userId]
         );
 
-        response.status(200).json(result);
+        // FORMAT RESPONSE: GROUP PRODUCT DATA INTO AN OBJECT
+        const formatted = result.map(item => ({
+            cartId: item.cartId,
+            userId: item.userId,
+            productId: item.productId,
+            size: item.size,
+            quantity: item.quantity,
+            price: item.price,
+
+            product: {
+                title: item.product_title,
+                brand: item.product_brand,
+                image: item.product_image,
+                mrp: item.product_mrp,
+                discountedPrice: item.product_discountedPrice,
+                description: item.product_description,
+            }
+        }));
+
+        response.status(200).json(formatted);
 
     } catch (error) {
         console.error("Error fetching cart:", error);
