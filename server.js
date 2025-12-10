@@ -238,26 +238,27 @@ app.post("/api/cart/add", async (request, response) => {
 
 // get  cart 
 
-app.get("/api/cart/:userId", async (request, response) => {
-    const userId = request.params.userId;
+// app.get("/api/cart/:userId", async (request, response) => {
+//     const userId = request.params.userId;
 
-    try {
-        const [result] = await db.query("SELECT * FROM cart WHERE userId = ?", [
-            userId,
-        ]);
+//     try {
+//         const [result] = await db.query("SELECT * FROM cart WHERE userId = ?", [
+//             userId,
+//         ]);
 
-        response.status(200).json(result);
+//         response.status(200).json(result);
 
-    } catch (error) {
-        console.error("Error fetching cart:", error);
-        response.status(500).json({ message: "Internal server error" });
-    }
-});
+//     } catch (error) {
+//         console.error("Error fetching cart:", error);
+//         response.status(500).json({ message: "Internal server error" });
+//     }
+// });
 
 
 
 // GET CART + PRODUCT DETAILS
-app.get("/api/cart/new/:userId", async (request, response) => {
+
+app.get("/api/cart/:userId", async (request, response) => {
     const userId = request.params.userId;
 
     try {
