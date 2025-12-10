@@ -242,7 +242,7 @@ app.post("/api/cart/add", async (request, response) => {
 
 // GET CART + PRODUCT DETAILS
 
-app.get("/api/cart/:userId", async (request, response) => {
+app.get("/api/get/cart/:userId", async (request, response) => {
     const userId = request.params.userId;
 
     try {
