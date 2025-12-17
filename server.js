@@ -104,6 +104,7 @@ app.get("/api/products/:id", async (request, response) => {
     }
 });
 
+
 // search products
 
 app.get("/api/products/search/st", async (request, response) => {
@@ -537,32 +538,74 @@ app.post("/api/order/place", async (request, response) => {
 // get user orders
 
 app.get("/api/order/my-orders", async (request, response) => {
-    const userId = request.query.userId;
+  const userId = request.query.userId;
 
-    try {
-        if (!userId) {
-            return response.status(400).json({
-                message: "userId is required",
-            });
-        }
-
-        const [orders] = await db.query(
-            "SELECT * FROM orders WHERE userId = ? ORDER BY createdAt DESC",
-            [userId]
-        );
-
-        response.status(200).json({
-            message: "Orders fetched successfully",
-            orders: orders,
-        });
-
-    } catch (error) {
-        console.error("Error fetching orders:", error);
-        response.status(500).json({
-            message: "Internal server error",
-        });
+  try {
+    if (!userId) {
+      return response.status(400).json({
+        message: "userId is required",
+      });
     }
+
+    const [rows] = await db.query(`
+      SELECT 
+        o.id AS orderId,
+        o.userId,
+        o.totalAmount,
+        o.status,
+        o.createdAt,
+
+        p.id AS productId,
+        p.title,
+        p.description,
+        p.image,
+        oi.quantity,
+        oi.price
+      FROM orders o
+      JOIN order_items oi ON o.id = oi.orderId
+      JOIN products p ON oi.productId = p.id
+      WHERE o.userId = ?
+      ORDER BY o.createdAt DESC
+    `, [userId]);
+
+    // 🔥 GROUP DATA ORDER WISE
+    const ordersMap = {};
+
+    rows.forEach(row => {
+      if (!ordersMap[row.orderId]) {
+        ordersMap[row.orderId] = {
+          id: row.orderId,
+          userId: row.userId,
+          totalAmount: row.totalAmount,
+          status: row.status,
+          createdAt: row.createdAt,
+          items: []
+        };
+      }
+
+      ordersMap[row.orderId].items.push({
+        productId: row.productId,
+        title: row.title,
+        description: row.description,
+        image: row.image,
+        quantity: row.quantity,
+        price: row.price,
+      });
+    });
+
+    response.status(200).json({
+      message: "Orders fetched successfully",
+      orders: Object.values(ordersMap),
+    });
+
+  } catch (error) {
+    console.error("Error fetching orders:", error);
+    response.status(500).json({
+      message: "Internal server error",
+    });
+  }
 });
+
 
 // get order details 
 
