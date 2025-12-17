@@ -537,16 +537,20 @@ app.post("/api/order/place", async (request, response) => {
 
 // get user orders
 
+// ✅ GET USER ORDERS (WITH PRODUCT DETAILS)
+
 app.get("/api/order/my-orders", async (request, response) => {
   const userId = request.query.userId;
 
   try {
+    // 🔴 VALIDATION
     if (!userId) {
       return response.status(400).json({
         message: "userId is required",
       });
     }
 
+    // ✅ CORRECTED QUERY
     const [rows] = await db.query(`
       SELECT 
         o.id AS orderId,
@@ -555,7 +559,7 @@ app.get("/api/order/my-orders", async (request, response) => {
         o.status,
         o.createdAt,
 
-        p.id AS productId,
+        p.productId AS productId,
         p.title,
         p.description,
         p.image,
@@ -563,10 +567,18 @@ app.get("/api/order/my-orders", async (request, response) => {
         oi.price
       FROM orders o
       JOIN order_items oi ON o.id = oi.orderId
-      JOIN products p ON oi.productId = p.id
+      JOIN products p ON oi.productId = p.productId
       WHERE o.userId = ?
       ORDER BY o.createdAt DESC
     `, [userId]);
+
+    // ✅ NO ORDERS CASE
+    if (rows.length === 0) {
+      return response.status(200).json({
+        message: "No orders found",
+        orders: [],
+      });
+    }
 
     // 🔥 GROUP DATA ORDER WISE
     const ordersMap = {};
@@ -574,7 +586,7 @@ app.get("/api/order/my-orders", async (request, response) => {
     rows.forEach(row => {
       if (!ordersMap[row.orderId]) {
         ordersMap[row.orderId] = {
-          id: row.orderId,
+          orderId: row.orderId,
           userId: row.userId,
           totalAmount: row.totalAmount,
           status: row.status,
@@ -587,12 +599,13 @@ app.get("/api/order/my-orders", async (request, response) => {
         productId: row.productId,
         title: row.title,
         description: row.description,
-        image: row.image,
+        image: `https://storeapi-fmdc.onrender.com/productImages/${row.image}`,
         quantity: row.quantity,
         price: row.price,
       });
     });
 
+    // ✅ FINAL RESPONSE
     response.status(200).json({
       message: "Orders fetched successfully",
       orders: Object.values(ordersMap),
@@ -605,6 +618,7 @@ app.get("/api/order/my-orders", async (request, response) => {
     });
   }
 });
+
 
 
 // get order details 
