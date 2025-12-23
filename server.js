@@ -165,7 +165,7 @@ app.get("/api/categories", async (request, response) => {
 
 
 
-// add category
+// add category product
 
 app.post("/api/categories/add", async (request, response) => {
     const { name, slug } = request.body;
