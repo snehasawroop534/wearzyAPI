@@ -253,6 +253,28 @@ app.delete("/api/categories/:id", async (req, res) => {
 
 
 
+//for trunkate table
+
+app.post("/api/categories/truncate", async (request, response) => {
+    try {
+        await db.query("TRUNCATE TABLE categories");
+
+        response.status(200).json({
+            message: "Categories table truncated successfully",
+            autoIncrementReset: true
+        });
+
+    } catch (error) {
+        console.error("Error truncating categories:", error);
+        response.status(500).json({
+            message: "Internal server error"
+        });
+    }
+});
+
+
+
+
 
 
 // get filters
