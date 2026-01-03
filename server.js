@@ -1,5 +1,4 @@
 const express = require("express");
-const { admin, bucket } = require("./config/firebase_app");
 const db = require("./db")
 const jwt = require("jsonwebtoken");
 const multer = require("multer");
@@ -23,120 +22,55 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 
-// const storage = multer.diskStorage({
-//     destination:"./productImages",
-//     filename:(request, file, cb) => {
-//         cb(null, Date.now() + path.extname(file.originalname));
-//     }
-// });
-
-// const upload = multer({ storage: storage });
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
-  fileFilter: (req, file, cb) => {
-    if (!file.mimetype.startsWith("image/")) {
-      return cb(new Error("Only image files allowed"), false);
+const storage = multer.diskStorage({
+    destination:"./productImages",
+    filename:(request, file, cb) => {
+        cb(null, Date.now() + path.extname(file.originalname));
     }
-    cb(null, true);
-  }
 });
+
+ const upload = multer({ storage: storage });
+
 
 app.use("/productImages", express.static("productImages"));
-app.post("/api/products/add", upload.single("productimg"), async (req, res) => {
 
-  try {
-    if (!req.file) {
-      return res.status(400).json({ message: "Please upload product image" });
-    }
-
-    const {
-      title,
-      brand,
-      mrp,
-      discountedPrice,
-      description,
-      category_id
-    } = req.body;
-
-    // 🔥 Firebase upload
-    const fileName = `wearzy/products/${Date.now()}_${req.file.originalname}`;
-    const file = bucket.file(fileName);
-
-    const blobStream = file.createWriteStream({
-      metadata: {
-        contentType: req.file.mimetype
-      }
-    });
-
-    blobStream.on("error", (err) => {
-      res.status(500).json({ message: "Upload failed", error: err.message });
-    });
-
-    blobStream.on("finish", async () => {
-      // Make image public
-      await file.makePublic();
-
-      const imageUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
-
-      // Save product in DB
-      const [result] = await db.query(
-        `INSERT INTO products 
-        (title, brand, mrp, discountedPrice, description, image, category_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [title, brand, mrp, discountedPrice, description, imageUrl, category_id]
-      );
-
-      res.status(201).json({
-        message: "Product added successfully",
-        productId: result.insertId,
-        imageUrl
-      });
-    });
-
-    blobStream.end(req.file.buffer);
-
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-});
 
 // Post product for admin use
 
-// app.post("/api/products/add", upload.single("productimg"), async (req, res) => {
+app.post("/api/products/add", upload.single("productimg"), async (req, res) => {
 
-//     if (!req.file) {
-//         return res.status(400).json({ message: "Please upload product image" });
-//     }
+    if (!req.file) {
+        return res.status(400).json({ message: "Please upload product image" });
+    }
 
-//     const {
-//         title,
-//         brand,
-//         mrp,
-//         discountedPrice,
-//         description,
-//         category_id
-//     } = req.body;
+    const {
+        title,
+        brand,
+        mrp,
+        discountedPrice,
+        description,
+        category_id
+    } = req.body;
 
-//     const filename = req.file.filename;
+    const filename = req.file.filename;
 
-//     try {
-//         const [result] = await db.query(
-//             `INSERT INTO products 
-//             (title, brand, mrp, discountedPrice, description, image, category_id)
-//             VALUES (?, ?, ?, ?, ?, ?, ?)`,
-//             [title, brand, mrp, discountedPrice, description, filename, category_id]
-//         );
+    try {
+        const [result] = await db.query(
+            `INSERT INTO products 
+            (title, brand, mrp, discountedPrice, description, image, category_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [title, brand, mrp, discountedPrice, description, filename, category_id]
+        );
 
-//         res.status(201).json({
-//             message: "Product added successfully",
-//             productId: result.insertId
-//         });
+        res.status(201).json({
+            message: "Product added successfully",
+            productId: result.insertId
+        });
 
-//     } catch (error) {
-//         res.status(500).json({ message: "Server error", error });
-//     }
-// });
+    } catch (error) {
+        res.status(500).json({ message: "Server error", error });
+    }
+});
 
 
 
