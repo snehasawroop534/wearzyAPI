@@ -690,7 +690,7 @@ app.get("/api/order/my-orders", async (request, response) => {
         productId: row.productId,
         title: row.title,
         description: row.description,
-        image: `https://storeapi-fmdc.onrender.com/productImages/${row.image}`,
+        image: row.image,
         quantity: row.quantity,
         price: row.price,
       });
